@@ -1,0 +1,5 @@
+.venv
+.mypy_cache
+train_data_Sila
+*.ipynb
+.DS_Store
