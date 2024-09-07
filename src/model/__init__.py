@@ -101,13 +101,20 @@ class ModelInterface:
     def __merge_dataset(self,
                         filenames: list[str]) -> tuple[pd.DataFrame,
                                                        list[str]]:
-        df, disks = self.__get_failures(filenames[0])
-        for filename in tqdm.tqdm(filenames[1:]):
-            new_df, new_disks = self.__get_failures(filename)
-            for disk in new_disks:
-                if disk not in disks:
-                    disks.append(disk)
-            df = pd.concat([df, new_df])
+        df, disks = None, None
+        for filename in tqdm.tqdm(filenames):
+            try:
+                new_df, new_disks = self.__get_failures(filename)
+                if df is None:
+                    df, disks = new_df, new_disks
+                for disk in new_disks:
+                    if disk not in disks:
+                        disks.append(disk)
+                df = pd.concat([df, new_df])
+            except IndexError:
+                continue
+        if df is None:
+            raise ValueError('Аt least one file must contain right columns')
         df = df.fillna(0)
         df = df.loc[df[self._target_column] > 1000]
         disks.append('unknown')
