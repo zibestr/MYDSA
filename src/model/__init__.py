@@ -163,10 +163,17 @@ class ModelInterface:
               feature_encoder: str,
               target_encoder: str) -> tuple[float, float]:
         seed = 67947
-        params = {'random_state': seed,
-                  'tree_method': 'hist',
-                  'objective': 'reg:squarederror',
-                  'eval_metric': ['mae', 'rmse', 'mape']}
+        params = {
+            'random_state': seed,
+            'tree_method': 'exact',
+            'objective': 'reg:squarederror',
+            'booster': 'gbtree',
+            'lambda': 0.697324690805717,
+            'alpha': 9.172742855494088e-05,
+            'subsample': 0.9121489394519637,
+            'colsample_bytree': 0.951654350087416,
+            'eval_metric': ['mae', 'rmse', 'mape']
+        }
 
         df, disks = self.__merge_dataset(filenames)
         X_train, X_test, y_train, y_test = train_test_split(
@@ -220,4 +227,5 @@ class ModelInterface:
         dump(self.__feature_encoder, self.__filenames[2])
         dump(self.__target_encoder, self.__filenames[3])
 
-        return r2_score(y_test, y_pred), mean_squared_error(y_test, y_pred)
+        return r2_score(y_test, y_pred), mean_squared_error(y_test,
+                                                            y_pred)
