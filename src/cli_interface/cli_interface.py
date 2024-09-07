@@ -41,7 +41,7 @@ def mode(t_mode):
     elif t_mode == "inc_learn" or t_mode=="3":
         inc_learn()
     elif t_mode=="q":
-        exit(0)
+        raise SystemExit()
     else:
         print('Не удалось распознать ввод\n')
         mode()
