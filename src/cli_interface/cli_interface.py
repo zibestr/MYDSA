@@ -1,59 +1,74 @@
-import argparse
 import datetime
-import logging
 import os
-import sys
-import time
-from pathlib import Path
 
 import click
-import pandas as pd
-import psutil
 import pyfiglet
 from colorama import Fore
 from rich.console import Console
 from rich.table import Table
-from tqdm import tqdm
 
 from src.model import ModelInterface
 
-# Name of the predicted date column
+
 time_column = 'failure_date'
 
 
-# Function to add color to logo
-def to_color(string, color):
-    color_code = {'blue': '\033[34m',
-                  'yellow': '\033[33m',
-                  'green': '\033[32m',
-                  'red': '\033[31m'
-                  }
-    return color_code[color] + str(string) + '\033[0m'
+def to_color(text: str, color: str) -> str:
+    """Convert color name to ANSI code and color text
 
-# Function using menu to select mode
+    Args:
+        text (str): text to color
+        color (str): color name
+
+    Returns:
+        str: colored text
+    """
+    color_code = {
+        'blue': '\033[34m',
+        'yellow': '\033[33m',
+        'green': '\033[32m',
+        'red': '\033[31m'
+    }
+    return color_code[color] + str(text) + '\033[0m'
+
+
 @click.command()
-@click.option("--t_mode", prompt="Введите тип процесса - \n1 - predict"
+@click.option("--t_mode",
+              prompt="Введите тип процесса - \n1 - predict"
               "(предсказание)\n2 - train(обучение)\n3 - inc_learn(дообучение)"
               "\nq - выход\n->")
+def mode(input_type: str) -> None:
+    """Call functions, using their codes, or exit
 
+    Args:
+        input_type (str): can be 1, 2, 3 or q
 
-def mode(t_mode):
-    # print(psutil.virtual_memory().free)
-    if t_mode == "predict" or t_mode == "1":
+    Raises:
+        SystemExit: if 'q' was entered
+    """
+    if input_type == "predict" or input_type == "1":
         predict()
-    elif t_mode == "train" or t_mode == "2":
+    elif input_type == "train" or input_type == "2":
         train()
-    elif t_mode == "inc_learn" or t_mode=="3":
+    elif input_type == "inc_learn" or input_type == "3":
         inc_learn()
-    elif t_mode=="q":
+    elif input_type == "q":
         raise SystemExit()
     else:
         print('Не удалось распознать ввод\n')
         mode()
 
 
-# Function of replacing values ​​in a column according to the predicted date
-def replace_df(delta):
+def replace_df(delta: datetime.timedelta) -> str:
+    """Get description of failure time in period of 3, 6, 9 or 12 months
+
+    Args:
+        delta (datetime.timedelta): timedelta between failure time and date
+          of measurement
+
+    Returns:
+        str: description
+    """
     if delta < datetime.timedelta(days=90):
         return 'Возможна поломка в течение ближайших трёх месяцев!!!'
     elif delta < datetime.timedelta(days=180):
@@ -65,11 +80,17 @@ def replace_df(delta):
     else:
         return "В течение года поломка не предвидется"
 
-# Function for accessing the model for prediction purposes (using the menu)
+
 @click.command()
-@click.option("--path", prompt="Введите путь файла, для которого будет"
+@click.option("--path",
+              prompt="Введите путь файла, для которого будет"
               " происходит предсказание")
-def predict(path):
+def predict(path: str) -> None:
+    """Call prediction function in full-cli mode
+
+    Args:
+        path (str): path to csv file with data
+    """
     if os.path.isfile(path) and path.endswith(".csv"):
         if os.path.isfile('model/xgb.bin') and os.path.isfile(
             'model/features.bin'
@@ -77,15 +98,19 @@ def predict(path):
            os.path.isfile('model/label.bin') and os.path.isfile(
                'model/target.bin'
         ):
-            model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            model = ModelInterface('model/xgb.bin', 'model/label.bin',
+                                   'model/features.bin', 'model/target.bin')
             try:
                 df = model.predict(path)
             except ValueError:
                 print(Fore.RED + "CSV файл не подходящего формата")
-            print(Fore.GREEN+"Путь существует и есть файл нужного расширения, процесс запущен")
+            print(Fore.GREEN +
+                  "Путь существует и есть файл нужного расширения, процесс"
+                  " запущен")
             size = df.shape
             df = df.sort_values(time_column)
-            df['time_delta'] = df[time_column] - datetime.datetime.strptime(os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
+            df['time_delta'] = df[time_column] - datetime.datetime.strptime(
+                os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
             df['time_delta'] = df['time_delta'].apply(replace_df)
             table = Table(title="Disks")
             rows = df.iloc[:15].values.tolist()
@@ -93,146 +118,229 @@ def predict(path):
             for column in df.columns:
                 table.add_column(column, vertical="middle")
             for row in rows:
-                table.add_row(*row,  style='bright_green')
+                table.add_row(*row, style='bright_green')
             console = Console()
             console.print(table)
-            print(Fore.YELLOW + "Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
-            df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
+            print(
+                Fore.YELLOW +
+                "Получившиеся значения сохранены в файле result_{}.csv\nВсего"
+                " количество элементов - {}".format(
+                    datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"),
+                    size[0]))
+            df.to_csv("result_{}.csv".format(
+                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")),
+                      index=False)
         else:
-            print(Fore.RED + "Модель не существует, нельзя выполнить предсказание. Сначала выполните обучение")
-        print(Fore.YELLOW+"")
+            print(
+                Fore.RED +
+                "Модель не существует, нельзя выполнить предсказание. Сначала"
+                " выполните обучение")
+        print(Fore.YELLOW + "")
         mode()
     else:
-        print(Fore.RED+"Файл не того расширения или его не существует")
-        print(Fore.YELLOW+"")
+        print(Fore.RED + "Файл не того расширения или его не существует")
+        print(Fore.YELLOW + "")
         predict()
 
 
-# Function for accessing the model for training purposes (using the menu)
 @click.command()
-@click.option("--path", prompt="Введите путь директории, для которого будет происходит обучение")
-def train(path):
+@click.option(
+    "--path",
+    prompt="Введите путь директории, для которого будет происходит обучение")
+def train(path: str) -> None:
+    """Call train function in full-cli mode
+
+    Args:
+        path (str): path to directory with csv files
+    """
     if os.path.isdir(path):
         files = []
         for File in os.listdir(path):
             if File.endswith(".csv"):
                 files.append(File)
-        if len(files)==0:
-            print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
-            print(Fore.YELLOW+"")
+        if len(files) == 0:
+            print(Fore.RED +
+                  "В директории нет ни одного файла подходящего расширения")
+            print(Fore.YELLOW + "")
             train()
         else:
             if not os.path.isdir('model'):
                 os.mkdir('model')
             model = ModelInterface()
             files = [os.path.join(path, file) for file in files]
-            print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-            r2_score, mse = model.train(files, 'model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            print(Fore.GREEN +
+                  "Путь существует и есть файлы нужного расширения, процесс"
+                  " запущен")
+            r2_score, mse = model.train(files, 'model/xgb.bin',
+                                        'model/label.bin',
+                                        'model/features.bin',
+                                        'model/target.bin')
             print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
-            print(Fore.YELLOW+"")
+            print(Fore.YELLOW + "")
             mode()
     else:
-        print(Fore.RED+"Введён неправильный путь, введите другой")
-        print(Fore.YELLOW+"")
+        print(Fore.RED + "Введён неправильный путь, введите другой")
+        print(Fore.YELLOW + "")
         train()
 
 
-# Function for accessing the model for the purpose of additional training (using the menu)
 @click.command()
-@click.option("--path", prompt="Введите путь директории, для которого будет происходит дообучение")
-def inc_learn(path):
+@click.option(
+    "--path",
+    prompt="Введите путь директории, для которого будет происходит дообучение")
+def inc_learn(path: str):
+    """Call incremental learning function in full-cli mode
+
+    Args:
+        path (str): path to directory with csv files
+    """
     if os.path.isdir(path):
         files = []
         for File in os.listdir(path):
             if File.endswith(".csv"):
                 files.append(File)
-        if len(files)==0:
-            print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
-            print(Fore.YELLOW+"")
+        if len(files) == 0:
+            print(Fore.RED +
+                  "В директории нет ни одного файла подходящего расширения")
+            print(Fore.YELLOW + "")
             inc_learn()
         else:
-            if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
-               os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
-                model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            if os.path.isfile('model/xgb.bin') and \
+               os.path.isfile('model/features.bin') and \
+               os.path.isfile('model/label.bin') and \
+               os.path.isfile('model/target.bin'):
+                model = ModelInterface('model/xgb.bin', 'model/label.bin',
+                                       'model/features.bin',
+                                       'model/target.bin')
                 files = [os.path.join(path, file) for file in files]
-                print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
+                print(
+                    Fore.GREEN +
+                    "Путь существует и есть файлы нужного расширения, процесс"
+                    " запущен")
                 r2_score, mse = model.inc_train(files)
                 print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
             else:
-                print(Fore.RED + "Модель не существует, нельзя выполнить дообучение. Сначала выполните обучение")
-            print(Fore.YELLOW+"")
+                print(Fore.RED +
+                      "Модель не существует, нельзя выполнить дообучение."
+                      " Сначала выполните обучение")
+            print(Fore.YELLOW + "")
             mode()
     else:
-        print(Fore.RED+"Введён неправильный путь, введите другой")
-        print(Fore.YELLOW+"")
+        print(Fore.RED + "Введён неправильный путь, введите другой")
+        print(Fore.YELLOW + "")
         inc_learn()
-    
-#Function for calling the model for prediction purposes (using run arguments)
-def arg_predict(path, unsort):
+
+
+def arg_predict(path: str, sort: bool):
+    """Call predict function in simple-cli mode
+
+    Args:
+        path (str): path to csv file
+        sort (bool): flag to sort result
+    """
     if os.path.isfile(path) and path.endswith(".csv"):
-        if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
-           os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
-            model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+        if os.path.isfile('model/xgb.bin') and \
+               os.path.isfile('model/features.bin') and \
+               os.path.isfile('model/label.bin') and \
+               os.path.isfile('model/target.bin'):
+            model = ModelInterface('model/xgb.bin', 'model/label.bin',
+                                   'model/features.bin', 'model/target.bin')
             try:
                 df = model.predict(path)
             except ValueError:
                 print(Fore.RED + "CSV файл не подходящего формата")
             size = df.shape
-            if unsort:
+            if sort:
                 df = df.sort_values(time_column)
-            df['time_delta'] = df[time_column] - datetime.datetime.strptime(os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
+            df['time_delta'] = df[time_column] - datetime.datetime.strptime(
+                os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
             df['time_delta'] = df['time_delta'].apply(replace_df)
-            print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
-            df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
+            print(
+                Fore.YELLOW +
+                "Получившиеся значения сохранены в файле result_{}.csv\nВсего"
+                " количество элементов - {}".format(
+                    datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"),
+                    size[0]))
+            df.to_csv("result_{}.csv".format(
+                datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")),
+                      index=False)
     else:
-        print(Fore.RED+"Файл не того расширения или его не существует")
+        print(Fore.RED + "Файл не того расширения или его не существует")
 
-#Function for accessing the model for training purposes (using launch arguments)
-def arg_train(path):
+
+def arg_train(path: str):
+    """Call train function in simple-cli mode
+
+    Args:
+        path (str): path to directory with csv files
+    """
     if os.path.isdir(path):
         files = []
         for File in os.listdir(path):
             if File.endswith(".csv"):
                 files.append(File)
-        if len(files)==0:
-            print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
+        if len(files) == 0:
+            print(Fore.RED +
+                  "В директории нет ни одного файла подходящего расширения")
         else:
             if not os.path.isdir('model'):
                 os.mkdir('model')
             model = ModelInterface()
             files = [os.path.join(path, file) for file in files]
-            print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-            r2_score, mse = model.train(files, 'model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            print(Fore.GREEN +
+                  "Путь существует и есть файлы нужного расширения, процесс"
+                  " запущен")
+            r2_score, mse = model.train(files, 'model/xgb.bin',
+                                        'model/label.bin',
+                                        'model/features.bin',
+                                        'model/target.bin')
             print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
     else:
-        print(Fore.RED+"Введён неправильный путь, введите другой")
+        print(Fore.RED + "Введён неправильный путь, введите другой")
 
-#Function for accessing the model for additional training (using launch arguments)
-def arg_inc_learn(path):
+
+def arg_inc_learn(path: str):
+    """Call incremental learning function in simple-cli mode
+
+    Args:
+        path (str): path to directory with csv files
+    """
     if os.path.isdir(path):
         files = []
         for File in os.listdir(path):
             if File.endswith(".csv"):
                 files.append(File)
-        if len(files)==0:
-            print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
+        if len(files) == 0:
+            print(Fore.RED +
+                  "В директории нет ни одного файла подходящего расширения")
         else:
-            if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
-               os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
-                model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            if os.path.isfile('model/xgb.bin') and \
+               os.path.isfile('model/features.bin') and \
+               os.path.isfile('model/label.bin') and \
+               os.path.isfile('model/target.bin'):
+                model = ModelInterface('model/xgb.bin', 'model/label.bin',
+                                       'model/features.bin',
+                                       'model/target.bin')
                 files = [os.path.join(path, file) for file in files]
-                print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
+                print(
+                    Fore.GREEN +
+                    "Путь существует и есть файлы нужного расширения, процесс"
+                    " запущен")
                 r2_score, mse = model.inc_train(files)
                 print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
             else:
-                print(Fore.RED + "Модель не существует, нельзя выполнить дообучение. Сначала выполните обучение")
+                print(Fore.RED +
+                      "Модель не существует, нельзя выполнить дообучение."
+                      " Сначала выполните обучение")
     else:
-        print(Fore.RED+"Введён неправильный путь, введите другой")
+        print(Fore.RED + "Введён неправильный путь, введите другой")
 
 
-#Function that prints a welcome message
 def hello():
+    """Show MYDSA welcome message
+    """
     mydsa = pyfiglet.figlet_format("MYDSA", font="slant")
     print(to_color(mydsa, "blue"))
-    print(Fore.MAGENTA + "MYDSA - Make Your Disk Smart Again\nВерсия утилиты 1000 минус 7")
-    print(Fore.YELLOW+"")
+    print(Fore.MAGENTA +
+          "MYDSA - Make Your Disk Smart Again\nВерсия утилиты 0.5.0")
+    print(Fore.YELLOW + "")
