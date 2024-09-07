@@ -16,11 +16,11 @@ import datetime
 import argparse
 from src.model import ModelInterface
 
-#Название столбца с предсказанной датой
+#Name of the predicted date column
 time_column = 'failure_date'
 
 
-#Функция для добавления цвета к логотипу
+#Function to add color to logo
 def to_color(string, color):
     color_code = {'blue': '\033[34m',
                     'yellow': '\033[33m',
@@ -29,7 +29,7 @@ def to_color(string, color):
                     }
     return color_code[color] + str(string) + '\033[0m'
 
-#Функция, использующее меню, для выбора режима
+#Function using menu to select mode
 @click.command()
 @click.option("--t_mode", prompt="Введите тип процесса - \n1 - predict(предсказание)\n2 - train(обучение)\n3 - inc_learn(дообучение)\nq - выход\n->")
 def mode(t_mode):
@@ -47,7 +47,7 @@ def mode(t_mode):
         mode()
 
 
-#Функция замены значений в столбце в соответствие с предсказанной датой
+#Function of replacing values ​​in a column according to the predicted date
 def replace_df(delta):
     if delta < datetime.timedelta(days=90):
         return 'Возможна поломка в течение ближайших трёх месяцев!!!'
@@ -60,7 +60,7 @@ def replace_df(delta):
     else:
         return "В течение года поломка не предвидется"
 
-#Функция для обращения к модели с целью предсказания(с помощью меню)
+#Function for accessing the model for prediction purposes (using the menu)
 @click.command()
 @click.option("--path", prompt="Введите путь файла, для которого будет происходит предсказание")
 def predict(path):
@@ -98,7 +98,7 @@ def predict(path):
         predict()
 
 
-#Функция для обращения к модели с целью обучения(с помощью меню)
+#Function for accessing the model for training purposes (using the menu)
 @click.command()
 @click.option("--path", prompt="Введите путь директории, для которого будет происходит обучение")
 def train(path):
@@ -129,7 +129,7 @@ def train(path):
         
 
 
-#Функция для обращения к модели с целью дообучения(с помощью меню)
+#Function for accessing the model for the purpose of additional training (using the menu)
 @click.command()
 @click.option("--path", prompt="Введите путь директории, для которого будет происходит дообучение")
 def inc_learn(path):
@@ -159,7 +159,7 @@ def inc_learn(path):
         print(Fore.YELLOW+"")
         inc_learn()
     
-#Функция для обращения к модели с целью предсказания(с помощью аргументов запуска)
+#Function for calling the model for prediction purposes (using run arguments)
 def arg_predict(path, unsort):
     if os.path.isfile(path) and path.endswith(".csv"):
         if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
@@ -179,7 +179,7 @@ def arg_predict(path, unsort):
     else:
         print(Fore.RED+"Файл не того расширения или его не существует")
 
-#Функция для обращения к модели с целью обучения(с помощью аргументов запуска)
+#Function for accessing the model for training purposes (using launch arguments)
 def arg_train(path):
     if os.path.isdir(path):
         files = []
@@ -199,7 +199,7 @@ def arg_train(path):
     else:
         print(Fore.RED+"Введён неправильный путь, введите другой")
 
-#Функция для обращения к модели с целью дообучения(с помощью аргументов запуска)
+#Function for accessing the model for additional training (using launch arguments)
 def arg_inc_learn(path):
     if os.path.isdir(path):
         files = []
@@ -222,7 +222,7 @@ def arg_inc_learn(path):
         print(Fore.RED+"Введён неправильный путь, введите другой")
 
 
-#Функция, выводящая приветственное сообщение
+#Function that prints a welcome message
 def hello():
     mydsa = pyfiglet.figlet_format("MYDSA", font="slant")
     print(to_color(mydsa, "blue"))
