@@ -1,37 +1,42 @@
-import click
-import pyfiglet
-from colorama import Fore
+import argparse
+import datetime
+import logging
 import os
-from tqdm import tqdm
+import sys
 import time
 from pathlib import Path
-import psutil
-import logging
-import sys
+
+import click
 import pandas as pd
+import psutil
+import pyfiglet
+from colorama import Fore
 from rich.console import Console
 from rich.table import Table
+from tqdm import tqdm
 
-import datetime
-import argparse
 from src.model import ModelInterface
 
-#Name of the predicted date column
+# Name of the predicted date column
 time_column = 'failure_date'
 
 
-#Function to add color to logo
+# Function to add color to logo
 def to_color(string, color):
     color_code = {'blue': '\033[34m',
-                    'yellow': '\033[33m',
-                    'green': '\033[32m',
-                    'red': '\033[31m'
-                    }
+                  'yellow': '\033[33m',
+                  'green': '\033[32m',
+                  'red': '\033[31m'
+                  }
     return color_code[color] + str(string) + '\033[0m'
 
-#Function using menu to select mode
+# Function using menu to select mode
 @click.command()
-@click.option("--t_mode", prompt="Введите тип процесса - \n1 - predict(предсказание)\n2 - train(обучение)\n3 - inc_learn(дообучение)\nq - выход\n->")
+@click.option("--t_mode", prompt="Введите тип процесса - \n1 - predict"
+              "(предсказание)\n2 - train(обучение)\n3 - inc_learn(дообучение)"
+              "\nq - выход\n->")
+
+
 def mode(t_mode):
     # print(psutil.virtual_memory().free)
     if t_mode == "predict" or t_mode == "1":
@@ -47,7 +52,7 @@ def mode(t_mode):
         mode()
 
 
-#Function of replacing values ​​in a column according to the predicted date
+# Function of replacing values ​​in a column according to the predicted date
 def replace_df(delta):
     if delta < datetime.timedelta(days=90):
         return 'Возможна поломка в течение ближайших трёх месяцев!!!'
@@ -60,13 +65,18 @@ def replace_df(delta):
     else:
         return "В течение года поломка не предвидется"
 
-#Function for accessing the model for prediction purposes (using the menu)
+# Function for accessing the model for prediction purposes (using the menu)
 @click.command()
-@click.option("--path", prompt="Введите путь файла, для которого будет происходит предсказание")
+@click.option("--path", prompt="Введите путь файла, для которого будет"
+              " происходит предсказание")
 def predict(path):
     if os.path.isfile(path) and path.endswith(".csv"):
-        if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
-           os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
+        if os.path.isfile('model/xgb.bin') and os.path.isfile(
+            'model/features.bin'
+        ) and \
+           os.path.isfile('model/label.bin') and os.path.isfile(
+               'model/target.bin'
+        ):
             model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
             try:
                 df = model.predict(path)
@@ -86,7 +96,7 @@ def predict(path):
                 table.add_row(*row,  style='bright_green')
             console = Console()
             console.print(table)
-            print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
+            print(Fore.YELLOW + "Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
             df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
         else:
             print(Fore.RED + "Модель не существует, нельзя выполнить предсказание. Сначала выполните обучение")
@@ -98,7 +108,7 @@ def predict(path):
         predict()
 
 
-#Function for accessing the model for training purposes (using the menu)
+# Function for accessing the model for training purposes (using the menu)
 @click.command()
 @click.option("--path", prompt="Введите путь директории, для которого будет происходит обучение")
 def train(path):
@@ -125,11 +135,9 @@ def train(path):
         print(Fore.RED+"Введён неправильный путь, введите другой")
         print(Fore.YELLOW+"")
         train()
-    
-        
 
 
-#Function for accessing the model for the purpose of additional training (using the menu)
+# Function for accessing the model for the purpose of additional training (using the menu)
 @click.command()
 @click.option("--path", prompt="Введите путь директории, для которого будет происходит дообучение")
 def inc_learn(path):
