@@ -3,3 +3,4 @@
 train_data_Sila
 *.ipynb
 .DS_Store
+__pycache__
