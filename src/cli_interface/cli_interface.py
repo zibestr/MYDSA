@@ -59,6 +59,7 @@ def predict(path):
         print(Fore.GREEN+"Путь существует и есть файл нужного расширения, процесс запущен")
         df = pd.read_csv(path)
         size = df.shape
+        df = df.sort_values("Количество часов работы")
         df['Количество часов работы'] = df['Количество часов работы'].apply(replace_df)
         table = Table(title="Disks")
         rows = df.iloc[:15].values.tolist()
