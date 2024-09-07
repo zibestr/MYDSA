@@ -1,3 +1,6 @@
+"""Programming interface for interacting with XGBoost model.\\
+    Realize train, predict and incremental learning
+"""
 import datetime as dt
 import warnings
 
