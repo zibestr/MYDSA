@@ -29,6 +29,10 @@ class ModelInterface:
             self.__label_encoder = load(label_encoder)
             self.__feature_encoder = load(feature_encoder)
             self.__target_encoder = load(target_encoder)
+            self.__filenames = [model_filename,
+                                label_encoder,
+                                feature_encoder,
+                                target_encoder]
         self._columns = ['capacity_bytes', 'smart_1_raw', 'smart_4_raw',
                          'smart_5_raw', 'smart_7_raw', 'smart_12_raw',
                          'smart_190_raw', 'smart_192_raw', 'smart_193_raw',
@@ -87,7 +91,7 @@ class ModelInterface:
     def __get_failures(self, filename: str) -> tuple[pd.DataFrame,
                                                      list[str]]:
         df = pd.read_csv(filename, sep=',')
-        disks = df['model'].unique().tolist()
+        disks = df[self._cat_column].unique().tolist()
         df = df.loc[df['failure'] == 1]
         df = df.loc[:, df.columns.isin(self._columns
                                        + [self._target_column,
@@ -97,15 +101,22 @@ class ModelInterface:
     def __merge_dataset(self,
                         filenames: list[str]) -> tuple[pd.DataFrame,
                                                        list[str]]:
-        df, disks = self.__get_failures(filenames[0])
-        for filename in tqdm.tqdm(filenames[1:]):
-            new_df, new_disks = self.__get_failures(filename)
-            for disk in new_disks:
-                if disk not in disks:
-                    disks.append(disk)
-            df = pd.concat([df, new_df])
+        df, disks = None, None
+        for filename in tqdm.tqdm(filenames):
+            try:
+                new_df, new_disks = self.__get_failures(filename)
+                if df is None:
+                    df, disks = new_df, new_disks
+                for disk in new_disks:
+                    if disk not in disks:
+                        disks.append(disk)
+                df = pd.concat([df, new_df])
+            except IndexError:
+                continue
+        if df is None:
+            raise ValueError('Аt least one file must contain right columns')
         df = df.fillna(0)
-        df = df.loc[df['smart_9_raw'] > 1000]
+        df = df.loc[df[self._target_column] > 1000]
         disks.append('unknown')
         return df, disks
 
@@ -181,11 +192,7 @@ class ModelInterface:
                                                                         y_pred)
 
     def inc_train(self,
-                  filenames: list[str],
-                  model_filename: str,
-                  label_encoder: str,
-                  feature_encoder: str,
-                  target_encoder: str) -> tuple[float, float]:
+                  filenames: list[str]) -> tuple[float, float]:
         if self.__model is None:
             raise ValueError('model must be trained before incrementional'
                              'training')
@@ -211,10 +218,10 @@ class ModelInterface:
                                  xgb_model=self.__model)
         y_pred = self.__model.predict(test_data)
 
-        dump(self.__model, model_filename)
-        dump(self.__label_encoder, label_encoder)
-        dump(self.__feature_encoder, feature_encoder)
-        dump(self.__target_encoder, target_encoder)
+        dump(self.__model, self.__filenames[0])
+        dump(self.__label_encoder, self.__filenames[1])
+        dump(self.__feature_encoder, self.__filenames[2])
+        dump(self.__target_encoder, self.__filenames[3])
 
         return r2_score(y_test, y_pred), mean_absolute_percentage_error(y_test,
                                                                         y_pred)
