@@ -2,7 +2,7 @@ from src.cli_interface.cli_interface import hello, mode, arg_inc_learn, arg_pred
 import argparse
 import os
 
-
+#function main
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='mydsa', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--type', choices=['default', 'predict', 'train', 'inc_learn'], default='default',

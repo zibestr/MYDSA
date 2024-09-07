@@ -16,11 +16,11 @@ import datetime
 import argparse
 from src.model import ModelInterface
 
-
+#Название столбца с предсказанной датой
 time_column = 'failure_date'
 
 
-
+#Функция для добавления цвета к логотипу
 def to_color(string, color):
     color_code = {'blue': '\033[34m',
                     'yellow': '\033[33m',
@@ -29,7 +29,7 @@ def to_color(string, color):
                     }
     return color_code[color] + str(string) + '\033[0m'
 
-
+#Функция, использующее меню, для выбора режима
 @click.command()
 @click.option("--t_mode", prompt="Введите тип процесса - \n1 - predict(предсказание)\n2 - train(обучение)\n3 - inc_learn(дообучение)\nq - выход\n->")
 def mode(t_mode):
@@ -47,7 +47,7 @@ def mode(t_mode):
         mode()
 
 
-
+#Функция замены значений в столбце в соответствие с предсказанной датой
 def replace_df(delta):
     if delta < datetime.timedelta(days=90):
         return 'Возможна поломка в течение ближайших трёх месяцев!!!'
@@ -60,7 +60,7 @@ def replace_df(delta):
     else:
         return "В течение года поломка не предвидется"
 
-
+#Функция для обращения к модели с целью предсказания(с помощью меню)
 @click.command()
 @click.option("--path", prompt="Введите путь файла, для которого будет происходит предсказание")
 def predict(path):
@@ -98,7 +98,7 @@ def predict(path):
         predict()
 
 
-
+#Функция для обращения к модели с целью обучения(с помощью меню)
 @click.command()
 @click.option("--path", prompt="Введите путь директории, для которого будет происходит обучение")
 def train(path):
@@ -129,7 +129,7 @@ def train(path):
         
 
 
-
+#Функция для обращения к модели с целью дообучения(с помощью меню)
 @click.command()
 @click.option("--path", prompt="Введите путь директории, для которого будет происходит дообучение")
 def inc_learn(path):
@@ -159,7 +159,7 @@ def inc_learn(path):
         print(Fore.YELLOW+"")
         inc_learn()
     
-
+#Функция для обращения к модели с целью предсказания(с помощью аргументов запуска)
 def arg_predict(path, unsort):
     if os.path.isfile(path) and path.endswith(".csv"):
         if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
@@ -179,7 +179,7 @@ def arg_predict(path, unsort):
     else:
         print(Fore.RED+"Файл не того расширения или его не существует")
 
-
+#Функция для обращения к модели с целью обучения(с помощью аргументов запуска)
 def arg_train(path):
     if os.path.isdir(path):
         files = []
@@ -199,7 +199,7 @@ def arg_train(path):
     else:
         print(Fore.RED+"Введён неправильный путь, введите другой")
 
-
+#Функция для обращения к модели с целью дообучения(с помощью аргументов запуска)
 def arg_inc_learn(path):
     if os.path.isdir(path):
         files = []
@@ -222,34 +222,9 @@ def arg_inc_learn(path):
         print(Fore.RED+"Введён неправильный путь, введите другой")
 
 
-
+#Функция, выводящая приветственное сообщение
 def hello():
     mydsa = pyfiglet.figlet_format("MYDSA", font="slant")
     print(to_color(mydsa, "blue"))
     print(Fore.MAGENTA + "MYDSA - Make Your Disk Smart Again\nВерсия утилиты 1000 минус 7")
     print(Fore.YELLOW+"")
-
-
-# if __name__ == "__main__":
-#     parser = argparse.ArgumentParser(prog='mydsa', formatter_class=argparse.RawTextHelpFormatter)
-#     parser.add_argument('--type', choices=['default', 'predict', 'train', 'inc_learn'], default='default',
-#                         help='predict - предсказать значения из одного ФАЙЛА формата .csv\n'
-#                              'train - обучение модели на новых данных, находящихся в ДИРЕКТОРИИ\n'
-#                              'inc_learn - дообучение модели на основе данных из ДИРЕКТОРИИ',
-#                         metavar='')
-#     parser.add_argument('--sort', action="store_true",
-#                         help='Отсортировать по какому-нибудь принципу')
-#     parser.add_argument('--path', type=str, default=os.getcwd(),
-#                         help='Путь до ФАЙЛА или ДИРЕКТОРИИ')
-#     args = parser.parse_args()
-#     if args.type == 'default':
-#         hello()
-#         mode()
-#     else:
-#         match args.type:
-#             case 'predict':
-#                 arg_predict(args.path)
-#             case 'train':
-#                 arg_train(args.path)
-#             case 'inc_learn':
-#                 arg_inc_learn(args.path)
