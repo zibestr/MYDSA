@@ -12,9 +12,10 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
+import datetime
 
 
-out_file_name = "zeveboba.csv"
+
 
 
 
@@ -58,23 +59,18 @@ def predict(path):
         print(Fore.GREEN+"Путь существует и есть файл нужного расширения, процесс запущен")
         df = pd.read_csv(path)
         size = df.shape
-        if size[0]<=15:
-            df['Количество часов работы'] = df['Количество часов работы'].apply(replace_df)
-            table = Table(title="Disks")
-            rows = df.values.tolist()
-            rows = [[str(el) for el in row] for row in rows]
-            columns = df.columns.tolist()
-
-            for column in columns:
-                table.add_column(column, vertical="middle")
-
-            for row in rows:
-                table.add_row(*row,  style='bright_green')
-
-            console = Console()
-            console.print(table)
-        print(Fore.YELLOW+"Получившиеся значения сохранены в файле {}".format(out_file_name))
-        df.to_csv(out_file_name, index=False)
+        df['Количество часов работы'] = df['Количество часов работы'].apply(replace_df)
+        table = Table(title="Disks")
+        rows = df.iloc[:15].values.tolist()
+        rows = [[str(el) for el in row] for row in rows]
+        for column in df.columns:
+            table.add_column(column, vertical="middle")
+        for row in rows:
+            table.add_row(*row,  style='bright_green')
+        console = Console()
+        console.print(table)
+        print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"), size[0]))
+        df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")), index=False)
         mode()
     else:
         print(Fore.RED+"Файл не того расширения или его не существует")
@@ -103,7 +99,7 @@ def train(path):
             print(Fore.YELLOW+"")
             mode()
     else:
-        print(Fore.RED+"Путя нет, введите другой")
+        print(Fore.RED+"Введён неправильный путь, введите другой")
         print(Fore.YELLOW+"")
         train()
     
@@ -131,7 +127,7 @@ def inc_learn(path):
             print(Fore.YELLOW+"")
             mode()
     else:
-        print(Fore.RED+"Путя нет, введите другой")
+        print(Fore.RED+"Введён неправильный путь, введите другой")
         print(Fore.YELLOW+"")
         inc_learn()
     
