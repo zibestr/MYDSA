@@ -29,6 +29,10 @@ class ModelInterface:
             self.__label_encoder = load(label_encoder)
             self.__feature_encoder = load(feature_encoder)
             self.__target_encoder = load(target_encoder)
+            self.__filenames = [model_filename,
+                                label_encoder,
+                                feature_encoder,
+                                target_encoder]
         self._columns = ['capacity_bytes', 'smart_1_raw', 'smart_4_raw',
                          'smart_5_raw', 'smart_7_raw', 'smart_12_raw',
                          'smart_190_raw', 'smart_192_raw', 'smart_193_raw',
@@ -181,11 +185,7 @@ class ModelInterface:
                                                                         y_pred)
 
     def inc_train(self,
-                  filenames: list[str],
-                  model_filename: str,
-                  label_encoder: str,
-                  feature_encoder: str,
-                  target_encoder: str) -> tuple[float, float]:
+                  filenames: list[str]) -> tuple[float, float]:
         if self.__model is None:
             raise ValueError('model must be trained before incrementional'
                              'training')
@@ -211,10 +211,10 @@ class ModelInterface:
                                  xgb_model=self.__model)
         y_pred = self.__model.predict(test_data)
 
-        dump(self.__model, model_filename)
-        dump(self.__label_encoder, label_encoder)
-        dump(self.__feature_encoder, feature_encoder)
-        dump(self.__target_encoder, target_encoder)
+        dump(self.__model, self.__filenames[0])
+        dump(self.__label_encoder, self.__filenames[1])
+        dump(self.__feature_encoder, self.__filenames[2])
+        dump(self.__target_encoder, self.__filenames[3])
 
         return r2_score(y_test, y_pred), mean_absolute_percentage_error(y_test,
                                                                         y_pred)
