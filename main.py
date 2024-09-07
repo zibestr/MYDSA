@@ -11,7 +11,7 @@ if __name__ == "__main__":
                              'inc_learn - дообучение модели на основе данных из ДИРЕКТОРИИ',
                         metavar='')
     parser.add_argument('--unsort', action="store_false",
-                        help='Отсортировать по какому-нибудь принципу')
+                        help='Вывести сначала те диски, у которых срок поломки максимально близок')
     parser.add_argument('--path', type=str, default=os.getcwd(),
                         help='Путь до ФАЙЛА или ДИРЕКТОРИИ')
     args = parser.parse_args()

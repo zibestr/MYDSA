@@ -220,5 +220,4 @@ class ModelInterface:
         dump(self.__feature_encoder, self.__filenames[2])
         dump(self.__target_encoder, self.__filenames[3])
 
-        return r2_score(y_test, y_pred), mean_absolute_percentage_error(y_test,
-                                                                        y_pred)
+        return r2_score(y_test, y_pred), mean_squared_error(y_test, y_pred)

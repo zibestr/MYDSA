@@ -43,6 +43,7 @@ def mode(t_mode):
     elif t_mode=="q":
         exit(0)
     else:
+        print('Не удалось распознать ввод\n')
         mode()
 
 
@@ -111,15 +112,14 @@ def train(path):
             print(Fore.YELLOW+"")
             train()
         else:
-            open('model/xgb.bin', 'a').close()
-            open('model/label.bin', 'a').close()
-            open('model/features.bin', 'a').close()
-            open('model/target.bin', 'a').close()
-            model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            if not os.path.isdir('model'):
+                os.mkdir('model')
+            model = ModelInterface()
             files = [os.path.join(path, file) for file in files]
             print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
             r2_score, mse = model.train(files, 'model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
             print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
+            print(Fore.YELLOW+"")
             mode()
     else:
         print(Fore.RED+"Введён неправильный путь, введите другой")
@@ -148,7 +148,8 @@ def inc_learn(path):
                 model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
                 files = [os.path.join(path, file) for file in files]
                 print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-                model.inc_train(files)
+                r2_score, mse = model.inc_train(files)
+                print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
             else:
                 print(Fore.RED + "Модель не существует, нельзя выполнить дообучение. Сначала выполните обучение")
             print(Fore.YELLOW+"")
@@ -188,6 +189,8 @@ def arg_train(path):
         if len(files)==0:
             print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
         else:
+            if not os.path.isdir('model'):
+                os.mkdir('model')
             model = ModelInterface()
             files = [os.path.join(path, file) for file in files]
             print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
@@ -211,7 +214,8 @@ def arg_inc_learn(path):
                 model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
                 files = [os.path.join(path, file) for file in files]
                 print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-                model.inc_train(files)
+                r2_score, mse = model.inc_train(files)
+                print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
             else:
                 print(Fore.RED + "Модель не существует, нельзя выполнить дообучение. Сначала выполните обучение")
     else:
