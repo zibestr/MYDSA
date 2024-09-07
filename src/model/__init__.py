@@ -123,9 +123,6 @@ class ModelInterface:
     def __get_X_y(self, df: pd.DataFrame,
                   disks: list[str]) -> tuple[np.ndarray,
                                              np.ndarray]:
-        for i in range(len(disks)):
-            if disks[i] not in self.__label_encoder.classes_:
-                disks[i] = 'unknown'
         if self.__label_encoder is None:
             self.__label_encoder = LabelEncoder().fit([[disk]
                                                        for disk in disks])
