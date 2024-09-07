@@ -14,6 +14,7 @@ from rich.table import Table
 
 import datetime
 import argparse
+from model import ModelInterface
 
 
 time_column = 'Количество часов работы'
@@ -46,11 +47,17 @@ def mode(t_mode):
 
 
 
-def replace_df(x):
-    if type(x)==int and x<=0:
-        return '!!!Возможна скорая поломка!!!'
+def replace_df(delta):
+    if delta < datetime.timedelta(days=90):
+        return 'Возможна поломка в течение ближайших трёх месяцев!!!'
+    elif delta < datetime.timedelta(days=180):
+        return 'Возможна поломка в сроке от трёх до шести месяцев!!'
+    elif delta < datetime.timedelta(days=270):
+        return 'Возможна поломка в сроке от шести до девяти месяцев!'
+    elif delta < datetime.timedelta(days=365):
+        return 'Возможна поломка в сроке от девяти до двенадцати месяцев'
     else:
-        return "{}".format(x)
+        return "В течение года поломка не предвидется"
 
 
 @click.command()
@@ -94,11 +101,11 @@ def train(path):
             print(Fore.YELLOW+"")
             train()
         else:
+            model = ModelInterface()
+            files = [os.path.join(path, file) for file in files]
             print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-            for i in tqdm(range(len(files)), file=sys.stdout):
-                time.sleep(3)
-                tqdm.write("{}, {}".format(5, files[i]))
-            print(Fore.YELLOW+"")
+            r2_score, mse = model.train(files, 'model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
             mode()
     else:
         print(Fore.RED+"Введён неправильный путь, введите другой")
@@ -122,10 +129,14 @@ def inc_learn(path):
             print(Fore.YELLOW+"")
             inc_learn()
         else:
-            print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-            for i in tqdm(range(len(files))):
-                time.sleep(3)
-                tqdm.write("{}, {}".format(5, files[i]))
+            if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
+               os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
+                model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+                files = [os.path.join(path, file) for file in files]
+                print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
+                model.inc_train(files)
+            else:
+                print(Fore.RED + "Модель не существует, нельзя выполнить дообучение. Сначала выполните обучение")
             print(Fore.YELLOW+"")
             mode()
     else:
@@ -136,12 +147,19 @@ def inc_learn(path):
 
 def arg_predict(path):
     if os.path.isfile(path) and path.endswith(".csv"):
-        df = pd.read_csv(path)
-        size = df.shape
-        df = df.sort_values(time_column)
-        df[time_column] = df[time_column].apply(replace_df)
-        print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
-        df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
+        if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
+           os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
+            model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            try:
+                df = model.predict(path)
+            except ValueError:
+                print(Fore.RED + "CSV файл не подходящего формата")
+            size = df.shape
+            df = df.sort_values(time_column)
+            df['time_delta'] = df[time_column] - os.path.basename(path).replace('.csv', '')
+            df['time_delta'] = df['time_delta'].apply(replace_df)
+            print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
+            df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
     else:
         print(Fore.RED+"Файл не того расширения или его не существует")
 
@@ -156,10 +174,11 @@ def arg_train(path):
         if len(files)==0:
             print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
         else:
+            model = ModelInterface()
+            files = [os.path.join(path, file) for file in files]
             print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-            for i in tqdm(range(len(files)), file=sys.stdout):
-                time.sleep(3)
-                tqdm.write("{}, {}".format(5, files[i]))
+            r2_score, mse = model.train(files, 'model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+            print(Fore.GREEN + f"MSE: {mse};   R2: {r2_score}")
     else:
         print(Fore.RED+"Введён неправильный путь, введите другой")
 
@@ -173,10 +192,14 @@ def arg_inc_learn(path):
         if len(files)==0:
             print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
         else:
-            print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
-            for i in tqdm(range(len(files))):
-                time.sleep(3)
-                tqdm.write("{}, {}".format(5, files[i]))
+            if os.path.isfile('model/xgb.bin') and os.path.isfile('model/features.bin') and \
+               os.path.isfile('model/label.bin') and os.path.isfile('model/target.bin'):
+                model = ModelInterface('model/xgb.bin', 'model/label.bin', 'model/features.bin', 'model/target.bin')
+                files = [os.path.join(path, file) for file in files]
+                print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
+                model.inc_train(files)
+            else:
+                print(Fore.RED + "Модель не существует, нельзя выполнить дообучение. Сначала выполните обучение")
     else:
         print(Fore.RED+"Введён неправильный путь, введите другой")
 
