@@ -6,7 +6,7 @@ import pandas as pd
 import tqdm
 import xgboost as xgb
 from joblib import dump, load
-from sklearn.metrics import mean_absolute_percentage_error, r2_score
+from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 
@@ -185,8 +185,8 @@ class ModelInterface:
         dump(self.__feature_encoder, feature_encoder)
         dump(self.__target_encoder, target_encoder)
 
-        return r2_score(y_test, y_pred), mean_absolute_percentage_error(y_test,
-                                                                        y_pred)
+        return r2_score(y_test, y_pred), mean_squared_error(y_test,
+                                                            y_pred)
 
     def inc_train(self,
                   filenames: list[str]) -> tuple[float, float]:
