@@ -14,11 +14,27 @@ warnings.filterwarnings("ignore")
 
 
 class ModelInterface:
+    """Programming interface for interacting with XGBoost model.\\
+    Realize train, predict and incremental learning
+    """
     def __init__(self,
                  model_filename: str | None = None,
                  label_encoder: str | None = None,
                  feature_encoder: str | None = None,
                  target_encoder: str | None = None):
+        """Programming interface for interacting with XGBoost model.\\
+           Realize train, predict and incremental learning
+
+        Args:
+            **model_filename** (str | None, optional): path to serialized xgb
+            model. Defaults to None.
+            **label_encoder** (str | None, optional): path to serialized label
+            encoder. Defaults to None.
+            **feature_encoder** (str | None, optional): path to serialized
+            scaler for feature columns. Defaults to None.
+            **target_encoder** (str | None, optional): path to serialized
+            scaler for target column. Defaults to None.
+        """
         if model_filename is None:
             self.__model = None
             self.__label_encoder = None
@@ -33,6 +49,7 @@ class ModelInterface:
                                 label_encoder,
                                 feature_encoder,
                                 target_encoder]
+        # Required columns for model training and prediction
         self._columns = ['capacity_bytes', 'smart_1_raw', 'smart_4_raw',
                          'smart_5_raw', 'smart_7_raw', 'smart_12_raw',
                          'smart_190_raw', 'smart_192_raw', 'smart_193_raw',
@@ -44,6 +61,19 @@ class ModelInterface:
     def __open_dataframe(self, filename: str) -> tuple[pd.DataFrame,
                                                        dt.date,
                                                        list[str]]:
+        """Open csv table
+
+        Args:
+            **filename** (str): csv table filename
+
+        Raises:
+            **ValueError**: raises if the table don't contains
+            the required columns.
+
+        Returns:
+            tuple[DataFrame, datetime.date, list[str]]: dataframe,
+            data aggregation date, unique disk names
+        """
         df = pd.read_csv(filename, sep=',')
         try:
             df = df.loc[df['failure'] == 0]
@@ -53,12 +83,20 @@ class ModelInterface:
             df = df[self._columns + [self._target_column,
                                      self._cat_column]]
             return df, date, ids
-        except IndexError:
-            raise ValueError(f'Unknown rows in dataset: {filename}')
+        except IndexError as exc:
+            raise ValueError(f'Unknown rows in dataset: {filename}') from exc
 
     def __to_datetime(self,
                       date: dt.datetime,
                       pred: np.ndarray) -> np.ndarray:
+        """Convert predicted time from hours to dates
+
+        Args:
+            **date** (dt.datetime): data aggregation date
+            **pred** (np.ndarray): predicted time before failure
+        Returns:
+            ndarray: failure dates
+        """
         relu = np.vectorize(lambda x: x if x >= 0 else 0)
         date = np.datetime64(date)
         return relu(pred).astype('timedelta64[h]') + date
@@ -67,6 +105,16 @@ class ModelInterface:
                                 date: dt.datetime,
                                 ids: list[str],
                                 pred: np.ndarray) -> pd.DataFrame:
+        """Convert predictions in dataframe
+
+        Args:
+            **date** (dt.datetime): data aggregation date
+            **ids** (list[str]): serial numbers of devices
+            **pred** (np.ndarray): predicted time before failure
+
+        Returns:
+            DataFrame: formatted dataframe
+        """
         datetimes = self.__to_datetime(date,
                                        pred)
         df = pd.DataFrame()
@@ -74,7 +122,18 @@ class ModelInterface:
         df['failure_date'] = datetimes
         return df
 
-    def predict(self, filename: str) -> float:
+    def predict(self, filename: str) -> pd.DataFrame:
+        """Predict failure dates of devices in given file
+
+        Args:
+            **filename** (str): csv table filename
+
+        Raises:
+            ValueError: raises if call predict before training model
+
+        Returns:
+            DataFrame: formatted dataframe
+        """
         if self.__model is None:
             raise ValueError('model must be trained before predictions')
         data, date, ids = self.__open_dataframe(filename)
@@ -90,6 +149,14 @@ class ModelInterface:
 
     def __get_failures(self, filename: str) -> tuple[pd.DataFrame,
                                                      list[str]]:
+        """_summary_
+
+        Args:
+            filename (str): _description_
+
+        Returns:
+            tuple[DataFrame, list[str]]: _description_
+        """
         df = pd.read_csv(filename, sep=',')
         disks = df[self._cat_column].unique().tolist()
         df = df.loc[df['failure'] == 1]
@@ -101,6 +168,19 @@ class ModelInterface:
     def __merge_dataset(self,
                         filenames: list[str]) -> tuple[pd.DataFrame,
                                                        list[str]]:
+        """Automation building dataset from given files.\\
+        Dataset is built on the basis of failed disks.
+
+        Args:
+            filenames (list[str]): names of csv files
+
+        Raises:
+            ValueError: raises if none of the files contain the
+            required columns.
+
+        Returns:
+            tuple[pd.DataFrame, list[str]]: dataset, list of unique model disks
+        """
         df, disks = None, None
         for filename in tqdm.tqdm(filenames):
             try:
@@ -123,11 +203,22 @@ class ModelInterface:
     def __get_X_y(self, df: pd.DataFrame,
                   disks: list[str]) -> tuple[np.ndarray,
                                              np.ndarray]:
+        """Return data and labels from dataset
+
+        Args:
+            df (pd.DataFrame): dataset
+            disks (list[str]): unique names of disks models
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: X, y
+        """
         if self.__label_encoder is None:
             self.__label_encoder = LabelEncoder().fit([[disk]
                                                        for disk in disks])
+        # get only numerical features
         X = df.loc[:, ~df.columns.isin([self._target_column,
                                         self._cat_column])].to_numpy()
+        # stack numerical features with categorical feature
         X = np.hstack([X,
                        self.__label_encoder.transform(
                            df[self._cat_column].to_numpy().reshape(-1, 1)
@@ -136,6 +227,7 @@ class ModelInterface:
         if self.__feature_encoder is None:
             self.__feature_encoder = MinMaxScaler().fit(X)
             self.__target_encoder = MinMaxScaler().fit(y)
+        # normalize numerical data
         X = self.__feature_encoder.transform(X)
         y = self.__target_encoder.transform(
             y.reshape(-1, 1)
@@ -143,16 +235,28 @@ class ModelInterface:
         return (X, y)
 
     def __get_X(self, df: pd.DataFrame) -> np.ndarray:
+        """Return X from dataset
+
+        Args:
+            df (pd.DataFrame): dataset
+
+        Returns:
+            np.ndarray: X
+        """
+        # fill unknown models of devices
         for i in range(len(df[self._cat_column])):
             if df[self._cat_column].iloc[i] \
                not in self.__label_encoder.classes_:
                 df[self._cat_column].iloc[i] = 'unknown'
+        # get only numerical features
         X = df.loc[:, ~df.columns.isin([self._target_column,
                                         self._cat_column])].to_numpy()
+        # stack numerical features with categorical feature
         X = np.hstack([X,
                        self.__label_encoder.transform(
                            df[self._cat_column].to_numpy().reshape(-1, 1)
                        ).reshape(-1, 1)])
+        # normalize numerical data
         X = self.__feature_encoder.transform(X)
         return X
 
@@ -162,6 +266,19 @@ class ModelInterface:
               label_encoder: str,
               feature_encoder: str,
               target_encoder: str) -> tuple[float, float]:
+        """Training a model from scratch
+
+        Args:
+            filenames (list[str]): names of csv files
+            model_filename (str): filename to serialize the model
+            label_encoder (str): filename to serialize the label encoder
+            feature_encoder (str): filename to serialize the feature scaler
+            target_encoder (str): filename to serialize the target scaler
+
+        Returns:
+            tuple[float, float]: **R<sup>2</sup>** score, **MSE**
+        """
+        # best xgboost parameters for current task
         seed = 67947
         params = {
             'random_state': seed,
@@ -176,6 +293,7 @@ class ModelInterface:
         }
 
         df, disks = self.__merge_dataset(filenames)
+        # split train and test data
         X_train, X_test, y_train, y_test = train_test_split(
             *self.__get_X_y(df, disks),
             test_size=0.2, random_state=seed, shuffle=True
@@ -187,6 +305,7 @@ class ModelInterface:
         self.__model = xgb.train(params, train_data, 150)
         y_pred = self.__model.predict(test_data)
 
+        # serialize model with encoders
         dump(self.__model, model_filename)
         dump(self.__label_encoder, label_encoder)
         dump(self.__feature_encoder, feature_encoder)
@@ -197,6 +316,18 @@ class ModelInterface:
 
     def inc_train(self,
                   filenames: list[str]) -> tuple[float, float]:
+        """Implements incremential learning xgboost model
+
+        Args:
+            filenames (list[str]): names of csv files
+
+        Raises:
+            ValueError:  raises if call incremential learning
+            before training model
+
+        Returns:
+            tuple[float, float]: **R<sup>2</sup>** score, **MSE**
+        """
         if self.__model is None:
             raise ValueError('model must be trained before incrementional'
                              'training')
