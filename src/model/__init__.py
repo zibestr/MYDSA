@@ -91,7 +91,7 @@ class ModelInterface:
     def __get_failures(self, filename: str) -> tuple[pd.DataFrame,
                                                      list[str]]:
         df = pd.read_csv(filename, sep=',')
-        disks = df['model'].unique().tolist()
+        disks = df[self._cat_column].unique().tolist()
         df = df.loc[df['failure'] == 1]
         df = df.loc[:, df.columns.isin(self._columns
                                        + [self._target_column,
@@ -109,7 +109,7 @@ class ModelInterface:
                     disks.append(disk)
             df = pd.concat([df, new_df])
         df = df.fillna(0)
-        df = df.loc[df['smart_9_raw'] > 1000]
+        df = df.loc[df[self._target_column] > 1000]
         disks.append('unknown')
         return df, disks
 
