@@ -13,9 +13,10 @@ from rich.console import Console
 from rich.table import Table
 
 import datetime
+import argparse
 
 
-
+time_column = 'Количество часов работы'
 
 
 
@@ -59,8 +60,8 @@ def predict(path):
         print(Fore.GREEN+"Путь существует и есть файл нужного расширения, процесс запущен")
         df = pd.read_csv(path)
         size = df.shape
-        df = df.sort_values("Количество часов работы")
-        df['Количество часов работы'] = df['Количество часов работы'].apply(replace_df)
+        df = df.sort_values(time_column)
+        df[time_column] = df[time_column].apply(replace_df)
         table = Table(title="Disks")
         rows = df.iloc[:15].values.tolist()
         rows = [[str(el) for el in row] for row in rows]
@@ -70,8 +71,8 @@ def predict(path):
             table.add_row(*row,  style='bright_green')
         console = Console()
         console.print(table)
-        print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M"), size[0]))
-        df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")), index=False)
+        print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
+        df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
         mode()
     else:
         print(Fore.RED+"Файл не того расширения или его не существует")
@@ -132,7 +133,52 @@ def inc_learn(path):
         print(Fore.YELLOW+"")
         inc_learn()
     
-    
+
+def arg_predict(path):
+    if os.path.isfile(path) and path.endswith(".csv"):
+        df = pd.read_csv(path)
+        size = df.shape
+        df = df.sort_values(time_column)
+        df[time_column] = df[time_column].apply(replace_df)
+        print(Fore.YELLOW+"Получившиеся значения сохранены в файле result_{}.csv\nВсего количество элементов - {}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M"), size[0]))
+        df.to_csv("result_{}.csv".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M")), index=False)
+    else:
+        print(Fore.RED+"Файл не того расширения или его не существует")
+
+
+def arg_train(path):
+    if os.path.isdir(path):
+        files = []
+        print(os.listdir(path))
+        for File in os.listdir(path):
+            if File.endswith(".csv"):
+                files.append(File)
+        if len(files)==0:
+            print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
+        else:
+            print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
+            for i in tqdm(range(len(files)), file=sys.stdout):
+                time.sleep(3)
+                tqdm.write("{}, {}".format(5, files[i]))
+    else:
+        print(Fore.RED+"Введён неправильный путь, введите другой")
+
+
+def arg_inc_learn(path):
+    if os.path.isdir(path):
+        files = []
+        for File in os.listdir(path):
+            if File.endswith(".csv"):
+                files.append(File)
+        if len(files)==0:
+            print(Fore.RED+"В директории нет ни одного файла подходящего расширения")
+        else:
+            print(Fore.GREEN+"Путь существует и есть файлы нужного расширения, процесс запущен")
+            for i in tqdm(range(len(files))):
+                time.sleep(3)
+                tqdm.write("{}, {}".format(5, files[i]))
+    else:
+        print(Fore.RED+"Введён неправильный путь, введите другой")
 
 
 
@@ -144,6 +190,25 @@ def hello():
 
 
 if __name__ == "__main__":
-    hello()
-    mode()
-
+    parser = argparse.ArgumentParser(prog='mydsa', formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('--type', choices=['default', 'predict', 'train', 'inc_learn'], default='default',
+                        help='predict - предсказать значения из одного ФАЙЛА формата .csv\n'
+                             'train - обучение модели на новых данных, находящихся в ДИРЕКТОРИИ\n'
+                             'inc_learn - дообучение модели на основе данных из ДИРЕКТОРИИ',
+                        metavar='')
+    parser.add_argument('--sort', action="store_true",
+                        help='Отсортировать по какому-нибудь принципу')
+    parser.add_argument('--path', type=str, default=os.getcwd(),
+                        help='Путь до ФАЙЛА или ДИРЕКТОРИИ')
+    args = parser.parse_args()
+    if args.type == 'default':
+        hello()
+        mode()
+    else:
+        match args.type:
+            case 'predict':
+                arg_predict(args.path)
+            case 'train':
+                arg_train(args.path)
+            case 'inc_learn':
+                arg_inc_learn(args.path)
