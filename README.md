@@ -115,6 +115,34 @@ R² 0.95 (1 - идеальный случай, 0 - лучшее констант
 
 ---
 
+## Сборка проекта
+
+1. Склонировать репозиторий на локальную машину
+```
+git clone git@github.com:zibestr/MYDSA.git
+```
+2. Установить и активировать виртуальное окружение
+```
+python3 -m venv .venv
+source .venv/bin/activate
+```
+3. Установить зависимости
+```
+pip3 install -r requirements.txt
+```
+4. Запустить проект
+```
+python3 main.py
+```
+4.1. Можно собрать проект в один исполняемый файл
+```
+pip3 install pyinstaller
+pyinstaller main.py -n mydsa --collect_all "xgboost" --collect-all "pyfiglet" -F -y
+```
+После этого, в директории dist лежит исполняемый файл
+
+---
+
 ## О команде
 
 - [Яшин Данила](https://github.com/zibestr) (Team Lead, ML Engineer)
