@@ -9,8 +9,7 @@ from rich.table import Table
 
 from src.model import ModelInterface
 
-
-time_column = 'failure_date'
+TIME_COLUMN = 'failure_date'
 
 
 def to_color(text: str, color: str) -> str:
@@ -108,8 +107,8 @@ def predict(path: str) -> None:
                   "Путь существует и есть файл нужного расширения, процесс"
                   " запущен")
             size = df.shape
-            df = df.sort_values(time_column)
-            df['time_delta'] = df[time_column] - datetime.datetime.strptime(
+            df = df.sort_values(TIME_COLUMN)
+            df['time_delta'] = df[TIME_COLUMN] - datetime.datetime.strptime(
                 os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
             df['time_delta'] = df['time_delta'].apply(replace_df)
             table = Table(title="Disks")
@@ -251,8 +250,8 @@ def arg_predict(path: str, sort: bool):
                 print(Fore.RED + "CSV файл не подходящего формата")
             size = df.shape
             if sort:
-                df = df.sort_values(time_column)
-            df['time_delta'] = df[time_column] - datetime.datetime.strptime(
+                df = df.sort_values(TIME_COLUMN)
+            df['time_delta'] = df[TIME_COLUMN] - datetime.datetime.strptime(
                 os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
             df['time_delta'] = df['time_delta'].apply(replace_df)
             print(
