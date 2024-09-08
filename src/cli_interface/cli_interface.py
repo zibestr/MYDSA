@@ -37,22 +37,22 @@ def to_color(text: str, color: str) -> str:
               prompt="Введите тип процесса - \n1 - predict"
               "(предсказание)\n2 - train(обучение)\n3 - inc_learn(дообучение)"
               "\nq - выход\n->")
-def mode(input_type: str) -> None:
+def mode(t_mode: str) -> None:
     """Call functions, using their codes, or exit
 
     Args:
-        input_type (str): can be 1, 2, 3 or q
+        t_mode (str): can be 1, 2, 3 or q
 
     Raises:
         SystemExit: if 'q' was entered
     """
-    if input_type == "predict" or input_type == "1":
+    if t_mode == "predict" or t_mode == "1":
         predict()
-    elif input_type == "train" or input_type == "2":
+    elif t_mode == "train" or t_mode == "2":
         train()
-    elif input_type == "inc_learn" or input_type == "3":
+    elif t_mode == "inc_learn" or t_mode == "3":
         inc_learn()
-    elif input_type == "q":
+    elif t_mode == "q":
         raise SystemExit()
     else:
         print('Не удалось распознать ввод\n')
