@@ -113,7 +113,7 @@ def predict(path: str) -> None:
                 os.path.basename(path).replace('.csv', ''), '%Y-%m-%d')
             df['time_delta'] = df['time_delta'].apply(replace_df)
             table = Table(title="Disks")
-            rows = df.iloc[:15].values.tolist()
+            rows = df.sample(15).values.tolist()
             rows = [[str(el) for el in row] for row in rows]
             for column in df.columns:
                 table.add_column(column, vertical="middle")
